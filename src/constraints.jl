@@ -12,14 +12,28 @@ function BoxConstraints(lb, ub)
                     for i in eachindex(ub)]
                   )
 end
-_constraints(::Nothing, ::Nothing, ::Nothing) = nothing
-_constraints(::Nothing, l::AbstractVector, ::Any) = BoxConstraints(l, fill(Inf, length(l)))
-_constraints(::Nothing, ::Any, u::AbstractVector) = BoxConstraints(fill(-Inf, length(u)), u)
-_constraints(::Nothing, l::AbstractVector, u::AbstractVector) = BoxConstraints(l, u)
-_constraints(c, ::Any, ::Any) = c
+_constraints(::Nothing, ::Nothing) = nothing
+_constraints(l::AbstractVector, ::Any) = BoxConstraints(l, fill(Inf, length(l)))
+_constraints(::Any, u::AbstractVector) = BoxConstraints(fill(-Inf, length(u)), u)
+_constraints(l::AbstractVector, u::AbstractVector) = BoxConstraints(l, u)
 transform(::Any, x) = x
 backtransform(::Any, x) = x
+function _shift_or_mirror_into_invertible(x, lb, al, ub, au)
+    if x < lb - 2 * al - (ub - lb) / 2 || x > ub + 2 * au + (ub - lb) / 2
+        r = 2 * (ub - lb + al + au)  # period
+        s = lb - 2 * al - (ub - lb) / 2  # start
+        x -= r * floor((x - s) / r)  # shift
+    end
+    if x > ub + au
+        x -= 2 * (x - ub - au)
+    end
+    if x < lb - al
+        x += 2 * (lb - al - x)
+    end
+    x
+end
 function _linquad_transform(x, lb, al, ub, au)
+    x = _shift_or_mirror_into_invertible(x, lb, al, ub, au)
     x < lb + al && return lb + (x - (lb - al))^2 / 4 / al
     x < ub - au && return x
     x < ub + 3au && return ub - (x - (ub + au))^2 / 4 / au

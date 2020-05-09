@@ -7,7 +7,7 @@ struct RecombinationWeights
 end
 default_weights(λ) = [log((λ + 1)/2) - log(i) for i in 1:λ]
 RecombinationWeights(λ::Int) = RecombinationWeights(default_weights(λ))
-function finalize_negative_weights!(w, cov) # TODO: limit bounds?
+function finalize_negative_weights!(w, cov)
     w.negative_weights .*= 1 + cov.c1/cov.cμ
 end
 function RecombinationWeights(w::Vector)
@@ -37,16 +37,11 @@ function Base.show(io::IO, ::MIME"text/plain", s::Sigma)
     println(io, "  d: $(s.d)")
     println(io, "  h: $(s.h)")
 end
-default_cσ(::Nothing, n, μeff, ::Any) = (μeff + 2)/(n + μeff + 3)
-default_cσ(cσ, ::Any, ::Any, ::Any) = cσ
-default_dσ(::Nothing, c, n, μeff, ::Any) = 1 + max(0, √((μeff - 1)/(n + 1)) - 1) + c
-default_dσ(dσ, ::Any, ::Any, ::Any, ::Any) = dσ
+default_cσ(n, μeff) = (μeff + 2)/(n + μeff + 3)
+default_dσ(c, n, μeff) = 1 + max(0, √((μeff - 1)/(n + 1)) - 1) + c
 function Sigma(σ0, n, μeff;
-               c = nothing,
-               d = nothing,
-               options = nothing)
-    c = default_cσ(c, n, μeff, options)
-    d = default_dσ(d, c, n, μeff, options)
+               c = default_cσ(n, μeff),
+               d = default_dσ(c, n, μeff))
     e = √(c * (2 - c) * μeff)
     Sigma(σ0, c, d, e, true, 0, sqrt(n)*(1 - 1/(4n) + 1/(21n^2)), zeros(n))
 end
@@ -82,18 +77,14 @@ function Base.show(io::IO, ::MIME"text/plain", s::Covariance)
     println(io, "  c1: $(s.c1)")
     println(io, "  cμ: $(s.cμ)")
 end
-default_cc(::Nothing, n, μeff, ::Any) = (4 + μeff/n)/(n + 4 + 2μeff/n)
-default_cc(c, ::Any, ::Any, ::Any) = c
-default_cc1(::Nothing, n, μeff, ::Any) = 2 / ((n + 1.3)^2 + μeff)
-default_cc1(c1, ::Any, ::Any, ::Any) = c1
-default_ccμ(::Nothing, c1, n, μeff, ::Any) = min(1 - c1, 2 * (.25 + μeff - 2 + 1/μeff) / ((n + 2)^2 + μeff))
-default_ccμ(cμ, ::Any, ::Any, ::Any, ::Any) = cμ
+default_cc(n, μeff) = (4 + μeff/n)/(n + 4 + 2μeff/n)
+default_cc1(n, μeff) = 2 / ((n + 1.3)^2 + μeff)
+default_ccμ(c1, n, μeff) = min(1 - c1, 2 * (.25 + μeff - 2 + 1/μeff) / ((n + 2)^2 + μeff))
 function Covariance(n, μeff;
-                    c = nothing, c1 = nothing, cmu = nothing, options = nothing)
-    c = default_cc(c, n, μeff, options)
-    c1 = default_cc1(c1, n, μeff, options)
-    cμ = default_ccμ(cmu, c1, n, μeff, options)
-    Covariance(c, c1, cμ, √(c * (2 - c) * μeff),
+                    c = default_cc(n, μeff),
+                    c1 = default_cc1(n, μeff),
+                    cmu = default_ccμ(c1, n, μeff))
+    Covariance(c, c1, cmu, √(c * (2 - c) * μeff),
                zeros(n), PDMats.PDMat(diagm(ones(n))))
 end
 function update_p!(c::Covariance, m, h)
@@ -140,19 +131,18 @@ function Base.show(io::IO, ::MIME"text/plain", s::Parameters{T, N}) where {T, N}
     println(io, "  population size: $(s.λ)")
 end
 sigma(p::Parameters) = p.sigma.σ
-default_popsize(n, ::Any) = 4 + floor(Int, 3*log(n))
+default_popsize(n) = 4 + floor(Int, 3*log(n))
 function Parameters(x0, σ0;
                        lower = nothing, upper = nothing,
-                       options = nothing, constraints = nothing,
+                       constraints = _constraints(lower, upper),
                        seed = rand(UInt),
                        noise_handling = nothing,
-                       popsize = default_popsize(length(x0), options))
+                       popsize = default_popsize(length(x0)))
     n = length(x0)
     weights = RecombinationWeights(popsize)
-    sigma = Sigma(σ0, n, weights.μeff, options = options)
-    cov = Covariance(n, weights.μeff, options = options)
+    sigma = Sigma(σ0, n, weights.μeff)
+    cov = Covariance(n, weights.μeff)
     finalize_negative_weights!(weights, cov)
-    constraints = _constraints(constraints, lower, upper)
     Parameters(n, popsize, backtransform(constraints, x0),
                   sigma,
                   cov,
@@ -187,12 +177,12 @@ function Base.show(io::IO, ::MIME"text/plain", s::Optimizer{P, L, S}) where {P, 
     print_result(s)
 end
 function Optimizer(x0, s0;
-                   options = nothing,
                    lower = nothing,
                    upper = nothing,
-                   constraints = nothing,
-                   noise_handling = nothing,
-                   popsize = default_popsize(length(x0), options),
+                   constraints = _constraints(lower, upper),
+                   noisy = false,
+                   noise_handling = noisy ? NoiseHandling(length(x0)) : nothing,
+                   popsize = default_popsize(length(x0)),
                    stop = nothing,
                    callback = (o, y, fvals, perm) -> nothing,
                    verbosity = 1,
@@ -201,7 +191,7 @@ function Optimizer(x0, s0;
                                         verbosity = verbosity,
                                         callback = callback),
                    kwargs...)
-    p = Parameters(x0, s0, options = options, popsize = popsize, seed = seed,
+    p = Parameters(x0, s0, popsize = popsize, seed = seed,
                       lower = lower, upper = upper, noise_handling =
                       noise_handling, constraints = constraints)
     Optimizer(p,

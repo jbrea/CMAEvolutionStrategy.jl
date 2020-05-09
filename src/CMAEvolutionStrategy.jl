@@ -49,15 +49,17 @@ function run!(o, f)
 end
 """
     minimize(f, x0, s0;
-             lower = nothing,           # lower bounds
-             upper = nothing,           # upper bounds
-             constraints = nothing,     # overrides lower and upper bounds if !== nothing
-             noise_handling = nothing,
+             lower = nothing,
+             upper = nothing,
+             constraints = _constraints(lower, upper),
+             noisy = false,
+             noise_handling = noisy ? NoiseHandling(length(x0)) : nothing,
              popsize = 4 + floor(Int, 3*log(length(x0))),
              callback = (o, y, fvals, perm) -> nothing,
              verbosity = 1,
              seed = rand(UInt),
              logger = BasicLogger(x0, verbosity = verbosity, callback = callback),
+             maxtime = nothing,
              maxiter = nothing,
              maxfevals = nothing,
              stagnation = 100 + 100 * length(x0)^1.5/popsize,
@@ -65,7 +67,12 @@ end
              xtol = nothing,
              ftol = 1e-11)
 
-Minimize function `f` starting around `x0` with initial covariance `s0 * I`.
+Minimize function `f` starting around `x0` with initial covariance `s0 * I`
+under box constraints `lower .<= x0 .<= upper`, where `x0`, `lower` and `upper`
+are vectors of the same length or `nothing`.
+
+The result is an `Optimizer` object from which e.g. [`xbest`](@ref), [`fbest`](@ref)
+or [`population_mean`](@ref) can be extracted.
 """
 function minimize(f, x0, s0;
                   kwargs...)
