@@ -7,16 +7,26 @@ struct RecombinationWeights
 end
 default_weights(λ) = [log((λ + 1)/2) - log(i) for i in 1:λ]
 RecombinationWeights(λ::Int) = RecombinationWeights(default_weights(λ))
-function finalize_negative_weights!(w, cov)
-    w.negative_weights .*= 1 + cov.c1/cov.cμ
+function _negative_weights_limit_sum!(w, v)
+    sw = -sum(w.negative_weights)
+    if sw > v
+        w.negative_weights .*= v/sw
+    end
+    w
 end
+function finalize_negative_weights!(w, cov, n)
+    w.negative_weights .*= 1 + cov.c1/cov.cμ
+    _negative_weights_limit_sum!(w, (1 - cov.c1 - cov.cμ) / cov.cμ / n)
+    _negative_weights_limit_sum!(w, 1 + 2 * _mueff(w.negative_weights)/(w.μeff + 2))
+end
+_mueff(w) = sum(w)^2/sum(w.^2)
 function RecombinationWeights(w::Vector)
     μ = sum(w .> 0)
     positive_weights = view(w, 1:μ)
     positive_weights ./= sum(positive_weights)
     negative_weights = view(w, μ + 1:length(w))
     negative_weights ./= -sum(negative_weights)
-    RecombinationWeights(μ, 1/sum(positive_weights .^ 2), w,
+    RecombinationWeights(μ, _mueff(positive_weights), w,
                          positive_weights, negative_weights)
 end
 
@@ -46,7 +56,7 @@ function Sigma(σ0, n, μeff;
     Sigma(σ0, c, d, e, true, 0, sqrt(n)*(1 - 1/(4n) + 1/(21n^2)), zeros(n))
 end
 function update_p!(s::Sigma, m, cov)
-    s.p .= (1 - s.c) .* s.p +  s.e .* whiten(cov.C, m)
+    s.p .= (1 - s.c) * s.p +  s.e * whiten(cov.C, m)
 end
 function update!(s::Sigma, m, C)
     update_p!(s, m, C)
@@ -80,12 +90,26 @@ end
 default_cc(n, μeff) = (4 + μeff/n)/(n + 4 + 2μeff/n)
 default_cc1(n, μeff) = 2 / ((n + 1.3)^2 + μeff)
 default_ccμ(c1, n, μeff) = min(1 - c1, 2 * (.25 + μeff - 2 + 1/μeff) / ((n + 2)^2 + μeff))
+struct MEigen
+    mat::Matrix{Float64}
+    e::Eigen{Float64,Float64,Array{Float64,2},Array{Float64,1}}
+    sqrtvalues::Vector{Float64}
+end
+function MEigen(m)
+    e = eigen(Symmetric(m))
+    if e.values[1] < 0
+        e.values .-= e.values[1] - eps()
+    end
+    MEigen(m, e, sqrt.(e.values))
+end
 function Covariance(n, μeff;
                     c = default_cc(n, μeff),
                     c1 = default_cc1(n, μeff),
                     cmu = default_ccμ(c1, n, μeff))
     Covariance(c, c1, cmu, √(c * (2 - c) * μeff),
-               zeros(n), PDMats.PDMat(diagm(ones(n))))
+               zeros(n),
+               MEigen(diagm([exp(1e-4/n * i) for i in 0:n-1]))
+              )
 end
 function update_p!(c::Covariance, m, h)
     c.p .*= (1 - c.c)
@@ -94,25 +118,26 @@ function update_p!(c::Covariance, m, h)
     end
     c.p
 end
-function safe_cholesky(m, i = 0)
-    try
-        PDMats.PDMat(Symmetric(m))
-    catch e
-        i == 10 && rethrow(e)
-        m .+= 1e-5 * I(size(m, 1))
-        safe_cholesky(m, i)
-    end
-end
+maha_norm(c, x) = √sum(abs2, c.C.e.vectors' * x ./ c.C.sqrtvalues)
 function update!(c::Covariance, m, y, perm, w, h)
     update_p!(c, m, h)
     weights = c.cμ * w.weights
-    c.C.mat .*= 1 - c.c1 - sum(weights)
-    c.C.mat .+= c.c1 * c.p * c.p'
-    v = y[:, perm]
-    c.C.mat .+= (weights' .* v) * v'
-    c.C = safe_cholesky(c.C.mat)
+    c.C.mat .*= 1 - h * c.c1 - sum(weights)
+    BLAS.syr!('U', c.c1, c.p, c.C.mat)
+    for (i, j) in enumerate(perm)
+        w = weights[i]
+        w == 0 && continue
+        v = y[:, j]
+        if w < 0
+            w *= length(v) / (maha_norm(c, v) + 1e-9)^2
+        end
+        BLAS.syr!('U', w, v, c.C.mat)
+    end
+    c.C = MEigen(c.C.mat)
     c
 end
+whiten(e::MEigen, x) = e.e.vectors * ((e.e.vectors' * x) ./ e.sqrtvalues)
+unwhiten(e::MEigen, x) = e.e.vectors * (e.sqrtvalues .* x)
 
 mutable struct Parameters{T,N}
     n::Int
@@ -142,7 +167,7 @@ function Parameters(x0, σ0;
     weights = RecombinationWeights(popsize)
     sigma = Sigma(σ0, n, weights.μeff)
     cov = Covariance(n, weights.μeff)
-    finalize_negative_weights!(weights, cov)
+    finalize_negative_weights!(weights, cov, n)
     Parameters(n, popsize, backtransform(constraints, x0),
                   sigma,
                   cov,
@@ -154,8 +179,9 @@ end
 function update!(p::Parameters, y, perm)
     sample_mean = weighted_average(y, perm, p.weights)
     p.mean .+= sigma(p) * sample_mean
-    update!(p.cov, sample_mean, y, perm, p.weights, p.sigma.h)
     update!(p.sigma, sample_mean, p.cov)
+    update!(p.cov, sample_mean, y, perm, p.weights, p.sigma.h)
+    p
 end
 sample(p) = unwhiten(p.cov.C, randn(p.n, p.λ))
 function evaluate(p::Parameters, f, y)

@@ -1,5 +1,5 @@
 module CMAEvolutionStrategy
-using LinearAlgebra, Printf, Statistics, Dates, PDMats, Random
+using LinearAlgebra, Printf, Statistics, Dates, Random
 
 export minimize, xbest, fbest, population_mean
 
