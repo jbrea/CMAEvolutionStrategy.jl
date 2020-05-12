@@ -43,7 +43,6 @@ function run!(o, f)
     end
     if o.logger.verbosity > 0
         print_state(o)
-        print_result(o)
     end
     o
 end
