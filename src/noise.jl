@@ -25,7 +25,7 @@ function noise_handling!(p::Parameters{<:Any,<:NoiseHandling}, f, y, fvals, perm
     λreev = floor(Int, rate) + (rand() < rate - floor(rate))
     n.fevals += λreev
     yreev = mutate(@view(y[:, 1:λreev]), n.ϵ)
-    new_fvals, _ = evaluate(p, f, yreev)
+    new_fvals = evaluate(p, f, compute_input(p, yreev))
     Δ, joint_perm = rank_changes(fvals, [new_fvals; fvals[λreev+1:end]], λreev)
     s = mean(2 * abs(Δ[i]) -
              Δlim(joint_perm[i] - (fvals[i] > fvals[λreev + i]), n.θ, p.λ) -
