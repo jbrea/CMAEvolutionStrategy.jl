@@ -33,9 +33,9 @@ ftol(::Nothing, ::Any, ::Any) = false
 ftol(tol, logger, s) = length(logger.frange) > 10 && (&)((logger.frange[end-2:end] .< tol)...) && (s.reason = :ftol; true)
 stagnation(::Nothing, ::Any, ::Any) = false
 function stagnation(tol, logger, o)
-    o.stop.it > length(o.p.n) * (5 + 100/o.p.λ) && length(logger.fbest) > 100 &&
+    o.stop.it > o.p.n * (5 + 100/o.p.λ) &&
     length(logger.fmedian) >= 2*tol &&
-    logger.fmedian[end-tol+1:end] >= logger.fmedian[end-2tol+1:end-tol] &&
+    median(logger.fmedian[end-tol+1:end]) >= median(logger.fmedian[end-2tol+1:end-tol]) &&
     (o.stop.reason = :stagnation; true)
 end
 function terminate!(o::Optimizer)
