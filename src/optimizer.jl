@@ -148,6 +148,8 @@ mutable struct Parameters{T,N}
     weights::RecombinationWeights
     constraints::T
     noise_handling::N
+    parallel_evaluation::Bool
+    multi_threading::Bool
     seed::UInt
 end
 function Base.show(io::IO, ::MIME"text/plain", s::Parameters{T, N}) where {T, N}
@@ -161,6 +163,8 @@ function Parameters(x0, σ0;
                        lower = nothing, upper = nothing,
                        constraints = _constraints(lower, upper),
                        seed = rand(UInt),
+                       parallel_evaluation = false,
+                       multi_threading = false,
                        noise_handling = nothing,
                        popsize = default_popsize(length(x0)))
     n = length(x0)
@@ -174,6 +178,8 @@ function Parameters(x0, σ0;
                   weights,
                   constraints,
                   noise_handling,
+                  parallel_evaluation,
+                  multi_threading,
                   UInt(seed))
 end
 function update!(p::Parameters, y, perm)
@@ -184,11 +190,22 @@ function update!(p::Parameters, y, perm)
     p
 end
 sample(p) = unwhiten(p.cov.C, randn(p.n, p.λ))
-function evaluate(p::Parameters, f, y)
-    σ = sigma(p)
-    fvals = [f(transform(p.constraints, y[:, i] * σ .+ p.mean)) for i in 1:size(y, 2)]
-    perm = sortperm(fvals)
-    (fvals = fvals, perm = perm)
+function compute_input(p, y)
+    transform!(p.constraints, sigma(p) * y .+ p.mean)
+end
+function evaluate(p::Parameters, f, input)
+    if p.parallel_evaluation
+        f(input)
+    elseif p.multi_threading
+        λ = size(input, 2)
+        result = zeros(λ)
+        Threads.@threads for i in 1:λ
+            result[i] = f(@view(input[:, i]))
+        end
+        result
+    else
+        [f(@view(input[:, i])) for i in 1:size(input, 2)]
+    end
 end
 weighted_average(y, perm, w) = sum(w.positive_weights[i] * y[:, perm[i]] for i in 1:w.μ)
 
@@ -212,14 +229,19 @@ function Optimizer(x0, s0;
                    stop = nothing,
                    callback = (o, y, fvals, perm) -> nothing,
                    verbosity = 1,
+                   parallel_evaluation = false,
+                   multi_threading = false,
                    seed = rand(UInt),
                    logger = BasicLogger(x0,
                                         verbosity = verbosity,
                                         callback = callback),
                    kwargs...)
     p = Parameters(x0, s0, popsize = popsize, seed = seed,
-                      lower = lower, upper = upper, noise_handling =
-                      noise_handling, constraints = constraints)
+                      lower = lower, upper = upper,
+                      parallel_evaluation = parallel_evaluation,
+                      multi_threading = multi_threading,
+                      noise_handling = noise_handling,
+                      constraints = constraints)
     Optimizer(p,
               logger,
               stop === nothing ? Stop(p.n, p.λ; kwargs...) : stop)

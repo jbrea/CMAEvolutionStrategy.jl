@@ -25,7 +25,7 @@ The default settings and implementation details follow closely
 For details on noise handling see [Hansen 2009](http://dx.doi.org/10.1109/TEVC.2008.924423).
 
 ## Example
-```julia-repl
+```julia
 julia> function rosenbrock(x)
            n = length(x)
            sum(100 * (x[2i-1]^2 - x[2i])^2 + (x[2i-1] - 1)^2 for i in 1:div(n, 2))
@@ -80,6 +80,7 @@ search: minimize
            noise_handling = noisy ? NoiseHandling(length(x0)) : nothing,
            popsize = 4 + floor(Int, 3*log(length(x0))),
            callback = (object, inputs, function_values, ranks) -> nothing,
+           parallel_evaluation = false,
            verbosity = 1,
            seed = rand(UInt),
            logger = BasicLogger(x0, verbosity = verbosity, callback = callback),
@@ -97,6 +98,12 @@ search: minimize
 
   The result is an Optimizer object from which e.g. xbest, fbest or population_mean can be
   extracted.
+
+  If parallel_evaluation = true, the objective function f receives matrices of n rows (n =
+  length(x0)) and popsize columns and should return a vector of length popsize. To use
+  multi-threaded parallel evaluation of the objective function, set parallel_evaluation =
+  false and start julia with multiple threads (c.f. julia manual for the multi-threading
+  setup).
 ```
 ## Benchmarks
 

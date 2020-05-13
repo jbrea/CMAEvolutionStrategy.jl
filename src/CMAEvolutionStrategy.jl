@@ -34,7 +34,8 @@ function run!(o, f)
     start!(o.stop)
     while true
         y = sample(o.p)
-        fvals, perm = evaluate(o.p, f, y)
+        fvals = evaluate(o.p, f, compute_input(o.p, y))
+        perm = sortperm(fvals)
         noise_handling!(o.p, f, y, fvals, perm)
         update!(o.p, y, perm)
         log!(o, y, fvals, perm)
@@ -55,6 +56,8 @@ end
              noise_handling = noisy ? NoiseHandling(length(x0)) : nothing,
              popsize = 4 + floor(Int, 3*log(length(x0))),
              callback = (o, y, fvals, perm) -> nothing,
+             parallel_evaluation = false,
+             multi_threading = false,
              verbosity = 1,
              seed = rand(UInt),
              logger = BasicLogger(x0, verbosity = verbosity, callback = callback),
@@ -72,6 +75,12 @@ are vectors of the same length or `nothing`.
 
 The result is an `Optimizer` object from which e.g. [`xbest`](@ref), [`fbest`](@ref)
 or [`population_mean`](@ref) can be extracted.
+
+If `parallel_evaluation = true`, the objective function `f` receives matrices
+of `n` rows (`n = length(x0)`) and `popsize` columns and should return a vector of
+length `popsize`. To use multi-threaded parallel evaluation of the objective function,
+set `multi_threading = true` and start julia with multiple threads
+(c.f. julia manual for the multi-threading setup).
 """
 function minimize(f, x0, s0;
                   kwargs...)
