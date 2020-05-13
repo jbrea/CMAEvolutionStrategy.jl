@@ -81,6 +81,7 @@ search: minimize
            popsize = 4 + floor(Int, 3*log(length(x0))),
            callback = (object, inputs, function_values, ranks) -> nothing,
            parallel_evaluation = false,
+           multi_threading = false,
            verbosity = 1,
            seed = rand(UInt),
            logger = BasicLogger(x0, verbosity = verbosity, callback = callback),
