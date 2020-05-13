@@ -102,8 +102,8 @@ search: minimize
 
   If parallel_evaluation = true, the objective function f receives matrices of n rows (n =
   length(x0)) and popsize columns and should return a vector of length popsize. To use
-  multi-threaded parallel evaluation of the objective function, set parallel_evaluation =
-  false and start julia with multiple threads (c.f. julia manual for the multi-threading
+  multi-threaded parallel evaluation of the objective function, set multi_threading = true
+ and start julia with multiple threads (c.f. julia manual for the multi-threading
   setup).
 ```
 ## Benchmarks
