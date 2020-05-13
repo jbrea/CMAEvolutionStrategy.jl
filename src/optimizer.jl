@@ -98,7 +98,7 @@ end
 function MEigen(m)
     e = eigen(Symmetric(m))
     if e.values[1] < 0
-        e.values .-= e.values[1] - eps()
+        e.values .-= 1.1 * e.values[1]
     end
     MEigen(m, e, sqrt.(e.values))
 end

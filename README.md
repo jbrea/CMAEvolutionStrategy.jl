@@ -14,13 +14,15 @@
 
 The CMA Evolution Strategy is a stochastic method for derivative-free
 optimization of potentially non-linear, non-convex or noisy functions over
-continuous domains [Hansen 2016](https://arxiv.org/abs/1604.00772).
+continuous domains ([Hansen 2016](https://arxiv.org/abs/1604.00772)).
 A brief discussion of its performance in practice can be found on
 [wikipedia](https://en.wikipedia.org/wiki/CMA-ES#Performance_in_practice).
 
 The default settings and implementation details follow closely
 [Hansen 2016](https://arxiv.org/abs/1604.00772) and
 [pycma](https://github.com/CMA-ES/pycma).
+
+For details on noise handling see [Hansen 2009](http://dx.doi.org/10.1109/TEVC.2008.924423).
 
 ## Example
 ```julia-repl
@@ -77,7 +79,7 @@ search: minimize
            noisy = false,
            noise_handling = noisy ? NoiseHandling(length(x0)) : nothing,
            popsize = 4 + floor(Int, 3*log(length(x0))),
-           callback = (o, y, fvals, perm) -> nothing,
+           callback = (object, inputs, function_values, ranks) -> nothing,
            verbosity = 1,
            seed = rand(UInt),
            logger = BasicLogger(x0, verbosity = verbosity, callback = callback),
@@ -96,3 +98,19 @@ search: minimize
   The result is an Optimizer object from which e.g. xbest, fbest or population_mean can be
   extracted.
 ```
+## Benchmarks
+
+Running
+[BlackBoxOptimizationBenchmarking](https://github.com/jonathanBieler/BlackBoxOptimizationBenchmarking.jl)
+in [24 dimensions](test/bbob.jl), highlights the advantage of CMA-ES early in optimization.
+All methods were chained into NelderMead after 90% of the run length (c.f. [BlackBoxOptimizationBenchmarking](https://github.com/jonathanBieler/BlackBoxOptimizationBenchmarking.jl))
+
+![](bbob24.png)
+
+CMAES = this package,
+BBO = [BlackBoxOptim](https://github.com/robertfeldt/BlackBoxOptim.jl),
+NES = [NaturalES](https://github.com/francescoalemanno/NaturalES.jl),
+Evo = [Evolutionary](https://github.com/wildart/Evolutionary.jl),
+PyCMA = [pycma](https://github.com/CMA-ES/pycma)
+
+![](bbob24rt.png)
