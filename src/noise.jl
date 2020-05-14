@@ -1,3 +1,19 @@
+"""
+    NoiseHandling(ασ = 1.1, callback = s -> s > 0,
+                  r = .3, ϵ = 0., θ = .5, c = .3)
+
+The standard settings may work well for noisy objective functions. To avoid
+premature convergence due to too fast decrease of sigma, there is the option
+`noise_handling = CMAEvolutionStrategy.NoiseHandler(ασ = 1.1, callback = s -> s > 0)`.
+Choose `ασ` such that sigma decreases slowly (and does not diverge). The callback
+function can be used to change the objective function, e.g. increase the
+measurement duration, if this leads to smaller noise. The variable `s` indicates
+whether CMA-ES can handle the current level of noise: `s > 0` indicates that the
+noise level is too high. Whenever the callback returns `true`, sigma gets multiplied by
+`ασ`, which is the case when `s > 0`, with the default callback.
+
+For details on noise handling see [Hansen 2009](http://dx.doi.org/10.1109/TEVC.2008.924423).
+"""
 Base.@kwdef mutable struct NoiseHandling{F}
     r::Float64 = .3
     ϵ::Float64 = 0.
@@ -8,6 +24,9 @@ Base.@kwdef mutable struct NoiseHandling{F}
     fevals::Int = 0
     callback::F = s -> s > 0
 end
+"""
+    NoiseHandling(n; kwargs...) = NoiseHandling(; ασ = 1 + 2/(n + 10), kwargs...)
+"""
 NoiseHandling(n; kwargs...) = NoiseHandling(; ασ = 1 + 2/(n + 10), kwargs...)
 noisefevals(::Any) = 0
 noisefevals(n::NoiseHandling) = n.fevals

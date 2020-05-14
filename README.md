@@ -22,7 +22,6 @@ The default settings and implementation details follow closely
 [Hansen 2016](https://arxiv.org/abs/1604.00772) and
 [pycma](https://github.com/CMA-ES/pycma).
 
-For details on noise handling see [Hansen 2009](http://dx.doi.org/10.1109/TEVC.2008.924423).
 
 ## Example
 ```julia
@@ -76,8 +75,7 @@ search: minimize
            lower = nothing,
            upper = nothing,
            constraints = _constraints(lower, upper),
-           noisy = false,
-           noise_handling = noisy ? NoiseHandling(length(x0)) : nothing,
+           noise_handling = nothing,
            popsize = 4 + floor(Int, 3*log(length(x0))),
            callback = (object, inputs, function_values, ranks) -> nothing,
            parallel_evaluation = false,
@@ -106,6 +104,19 @@ search: minimize
   and start julia with multiple threads (c.f. julia manual for the multi-threading
   setup).
 ```
+## Noise Handling
+
+The standard settings may work well for noisy objective functions. To avoid
+premature convergence due to too fast decrease of sigma, there is the option
+`noise_handling = CMAEvolutionStrategy.NoiseHandler(ασ = 1.1, callback = s -> s > 0)`.
+Choose `ασ` such that sigma decreases slowly (and does not diverge). The callback
+function can be used to change the objective function, e.g. increase the
+measurement duration, if this leads to smaller noise. The variable `s` indicates
+whether CMA-ES can handle the current level of noise: `s > 0` indicates that the
+noise level is too high. Whenever the callback returns `true`, sigma gets multiplied by
+`ασ`, which is the case when `s > 0`, with the default callback.
+
+For details on noise handling see [Hansen 2009](http://dx.doi.org/10.1109/TEVC.2008.924423).
 ## Benchmarks
 
 Running

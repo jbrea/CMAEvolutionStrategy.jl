@@ -73,8 +73,10 @@ end
 @testset "Noisy" begin
     f(x) = sum(abs2, x)
     res1 = minimize(f, zeros(3), .5, maxiter = 50)
-    res2 = minimize(f, zeros(3), .5, noisy = true, maxiter = 50)
-    @test fbest(res2) < .1
+    res2 = minimize(f, zeros(3), .5,
+                    noise_handling = CMAEvolutionStrategy.NoiseHandling(3),
+                    maxiter = 50)
+    @test fbest(res2) < 1e-3
     @test CMAEvolutionStrategy.noisefevals(res2.p.noise_handling) > 0
 end
 
