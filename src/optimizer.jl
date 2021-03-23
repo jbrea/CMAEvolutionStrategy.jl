@@ -139,7 +139,7 @@ end
 whiten(e::MEigen, x) = e.e.vectors * ((e.e.vectors' * x) ./ e.sqrtvalues)
 unwhiten(e::MEigen, x) = e.e.vectors * (e.sqrtvalues .* x)
 
-mutable struct Parameters{T,N}
+mutable struct Parameters{T,N,R}
     n::Int
     λ::Int
     mean::Vector{Float64}
@@ -151,6 +151,7 @@ mutable struct Parameters{T,N}
     parallel_evaluation::Bool
     multi_threading::Bool
     seed::UInt
+    rng::R
 end
 function Base.show(io::IO, ::MIME"text/plain", s::Parameters{T, N}) where {T, N}
     println(io, "CMAParameters{$(T.name.name),$(N.name.name)}")
@@ -166,6 +167,7 @@ function Parameters(x0, σ0;
                        parallel_evaluation = false,
                        multi_threading = false,
                        noise_handling = nothing,
+                       rng = MersenneTwister(UInt(seed)),
                        popsize = default_popsize(length(x0)))
     n = length(x0)
     weights = RecombinationWeights(popsize)
@@ -180,7 +182,8 @@ function Parameters(x0, σ0;
                   noise_handling,
                   parallel_evaluation,
                   multi_threading,
-                  UInt(seed))
+                  UInt(seed),
+                  rng)
 end
 function update!(p::Parameters, y, perm)
     sample_mean = weighted_average(y, perm, p.weights)
@@ -189,7 +192,7 @@ function update!(p::Parameters, y, perm)
     update!(p.cov, sample_mean, y, perm, p.weights, p.sigma.h)
     p
 end
-sample(p) = unwhiten(p.cov.C, randn(p.n, p.λ))
+sample(p) = unwhiten(p.cov.C, randn(p.rng, p.n, p.λ))
 function compute_input(p, y)
     transform!(p.constraints, sigma(p) * y .+ p.mean)
 end

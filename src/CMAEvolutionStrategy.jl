@@ -30,7 +30,6 @@ Extract the current mean of the optimizer.
 population_mean(o::Optimizer) = transform(o.p.constraints, o.p.mean)
 
 function run!(o, f)
-    Random.seed!(o.p.seed)
     start!(o.stop)
     while true
         y = sample(o.p)

@@ -41,7 +41,7 @@ end
 function noise_handling!(p::Parameters{<:Any,<:NoiseHandling}, f, y, fvals, perm)
     n = p.noise_handling
     rate = p.λ * n.r
-    λreev = floor(Int, rate) + (rand() < rate - floor(rate))
+    λreev = floor(Int, rate) + (rand(p.rng) < rate - floor(rate))
     n.fevals += λreev
     yreev = mutate(@view(y[:, 1:λreev]), n.ϵ)
     new_fvals = evaluate(p, f, compute_input(p, yreev))
