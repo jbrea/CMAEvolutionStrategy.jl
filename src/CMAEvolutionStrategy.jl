@@ -39,7 +39,12 @@ function run!(o, f)
         update!(o.p, y, perm)
         log!(o, y, fvals, perm)
         terminate!(o) && break
-        o.logger.verbosity > 0 && (o.stop.it < 4 || o.stop.it % 100 == 0 || time() - o.logger.times[end] > 2) && print_state(o)
+        if o.logger.verbosity > 0 &&
+           (o.stop.it < 4 ||
+            o.stop.it % 100 == 0 ||
+            time() - o.logger.times[end] > 2)
+           print_state(o)
+       end
     end
     if o.logger.verbosity > 0
         print_state(o)
