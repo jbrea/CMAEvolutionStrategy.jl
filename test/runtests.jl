@@ -80,3 +80,19 @@ end
     @test CMAEvolutionStrategy.noisefevals(res2.p.noise_handling) > 0
 end
 
+@testset "Logging" begin
+    f_log = let xhist = Vector{Float64}[], fhist = Float64[]
+        x -> begin
+            f = sum(abs2, x) + randn() * .1
+            push!(xhist, copy(x))
+            push!(fhist, f)
+            f
+        end
+    end
+    res = minimize(f_log, ones(4), .25, verbosity = 0,
+                   noise_handling = CMAEvolutionStrategy.NoiseHandling(4),
+                   maxiter = 50, lower = ones(4), upper = 2 * ones(4))
+    idx = argmin(f_log.fhist)
+    @test fbest(res) == f_log.fhist[idx]
+    @test xbest(res) == f_log.xhist[idx]
+end

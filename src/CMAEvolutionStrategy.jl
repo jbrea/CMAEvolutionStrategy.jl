@@ -36,8 +36,8 @@ function run!(o, f)
         fvals = evaluate(o.p, f, compute_input(o.p, y))
         perm = sortperm(fvals)
         noise_handling!(o.p, f, y, fvals, perm)
-        update!(o.p, y, perm)
         log!(o, y, fvals, perm)
+        update!(o.p, y, perm)
         terminate!(o) && break
         if o.logger.verbosity > 0 &&
            (o.stop.it < 4 ||
