@@ -108,7 +108,7 @@ search: minimize
 
 The standard settings may work well for noisy objective functions. To avoid
 premature convergence due to too fast decrease of sigma, there is the option
-`noise_handling = CMAEvolutionStrategy.NoiseHandler(ασ = 1.1, callback = s -> s > 0)`.
+`noise_handling = CMAEvolutionStrategy.NoiseHandling(ασ = 1.1, callback = s -> s > 0)`.
 Choose `ασ` such that sigma decreases slowly (and does not diverge). The callback
 function can be used to change the objective function, e.g. increase the
 measurement duration, if this leads to smaller noise. The variable `s` indicates
