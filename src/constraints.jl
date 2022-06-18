@@ -47,19 +47,19 @@ function _linquad_transform_inverse(y, lb, al, ub, au)
     y < ub - au && return y
     (ub + au) - 2*√(au * (ub - y))
 end
-function transform!(b::BoxConstraints, x::Vector)
+function transform!(b::BoxConstraints, x::AbstractVector)
     for i in eachindex(x)
         x[i] = _linquad_transform(x[i], b.lb[i], b.al[i], b.ub[i], b.au[i])
     end
     x
 end
-function backtransform!(b::BoxConstraints, y::Vector)
+function backtransform!(b::BoxConstraints, y::AbstractVector)
     for i in eachindex(y)
         y[i] = _linquad_transform_inverse(y[i], b.lb[i], b.al[i], b.ub[i], b.au[i])
     end
     y
 end
-function transform!(b::BoxConstraints, x::Matrix)
+function transform!(b::BoxConstraints, x::AbstractMatrix)
     n = size(x, 1)
     for i in eachindex(x)
         j = (i - 1) % n + 1
@@ -67,7 +67,7 @@ function transform!(b::BoxConstraints, x::Matrix)
     end
     x
 end
-function backtransform!(b::BoxConstraints, y::Matrix)
+function backtransform!(b::BoxConstraints, y::AbstractMatrix)
     n = size(x, 1)
     for i in eachindex(y)
         j = (i - 1) % n + 1

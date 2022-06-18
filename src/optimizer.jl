@@ -139,10 +139,10 @@ end
 whiten(e::MEigen, x) = e.e.vectors * ((e.e.vectors' * x) ./ e.sqrtvalues)
 unwhiten(e::MEigen, x) = e.e.vectors * (e.sqrtvalues .* x)
 
-mutable struct Parameters{T,N,R}
+mutable struct Parameters{V,T,N,R}
     n::Int
     λ::Int
-    mean::Vector{Float64}
+    mean::V
     sigma::Sigma
     cov::Covariance
     weights::RecombinationWeights
