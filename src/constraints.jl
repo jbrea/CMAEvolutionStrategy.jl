@@ -1,15 +1,15 @@
-struct BoxConstraints
-    lb::Vector{Float64}
-    ub::Vector{Float64}
-    al::Vector{Float64}
-    au::Vector{Float64}
+struct BoxConstraints{V1, V2}
+    lb::V1
+    ub::V2
+    al::V1
+    au::V2
 end
-function BoxConstraints(lb, ub)
+function BoxConstraints(lb::V1, ub::V2) where {V1, V2}
     BoxConstraints(lb, ub,
-                   [!isfinite(lb[i]) ? 1 : min((ub[i] - lb[i])/2, (1 + abs(lb[i]))/20)
-                    for i in eachindex(lb)],
-                   [!isfinite(ub[i]) ? 1 : min((ub[i] - lb[i])/2, (1 + abs(ub[i]))/20)
-                    for i in eachindex(ub)]
+                   convert(V1, [!isfinite(lb[i]) ? 1 : min((ub[i] - lb[i])/2, (1 + abs(lb[i]))/20)
+                                for i in eachindex(lb)]),
+                   convert(V2, [!isfinite(ub[i]) ? 1 : min((ub[i] - lb[i])/2, (1 + abs(ub[i]))/20)
+                                for i in eachindex(ub)])
                   )
 end
 _constraints(::Nothing, ::Nothing) = nothing

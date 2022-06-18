@@ -1,7 +1,7 @@
 log!(::Any, ::Any, ::Any, ::Any) = nothing
-mutable struct BasicLogger{F}
+mutable struct BasicLogger{F, V}
     fbest::Vector{Float64}
-    xbest::Vector{Vector{Float64}}
+    xbest::Vector{V}
     fmedian::Vector{Float64}
     frange::Vector{Float64}
     times::Vector{Float64}
@@ -11,9 +11,8 @@ end
 function Base.show(io::IO, ::MIME"text/plain", s::BasicLogger)
     println(io, "BasicLogger")
 end
-function BasicLogger(x0; verbosity = 1,
-                     callback = (o, y, fvals, perm) -> nothing)
-    BasicLogger(Float64[], Vector{Float64}[], Float64[], Float64[], Float64[],
+function BasicLogger(::V; verbosity = 1, callback = (o, y, fvals, perm) -> nothing) where V
+    BasicLogger(Float64[], V[], Float64[], Float64[], Float64[],
                 callback, verbosity)
 end
 function log!(o::Optimizer{<:Any, <:BasicLogger}, y, fvals, perm)
