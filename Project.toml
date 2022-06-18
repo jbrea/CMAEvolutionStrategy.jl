@@ -1,7 +1,7 @@
 name = "CMAEvolutionStrategy"
 uuid = "8d3b24bd-414e-49e0-94fb-163cc3a3e411"
 authors = ["Johanni Brea <jbrea@users.noreply.github.com>"]
-version = "0.2.2"
+version = "0.2.3"
 
 [deps]
 Dates = "ade2ca70-3891-5945-98fb-dc099432e06a"
