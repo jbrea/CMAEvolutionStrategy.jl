@@ -97,10 +97,11 @@ struct MEigen
 end
 function MEigen(m)
     e = eigen(Symmetric(m))
-    if e.values[1] < 0
-        e.values .-= 1.1 * e.values[1]
+    if e.values[1] < 1e-16
+        MEigen(m + 1e-15I)
+    else
+        MEigen(m, e, sqrt.(e.values))
     end
-    MEigen(m, e, sqrt.(e.values))
 end
 function Covariance(n, μeff;
                     c = default_cc(n, μeff),
@@ -129,7 +130,7 @@ function update!(c::Covariance, m, y, perm, w, h)
         w == 0 && continue
         v = y[:, j]
         if w < 0
-            w *= length(v) / (maha_norm(c, v) + 1e-9)^2
+            w *= length(v) / maha_norm(c, v)^2
         end
         BLAS.syr!('U', w, v, c.C.mat)
     end
