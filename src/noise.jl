@@ -38,7 +38,7 @@ function rank_changes(x, y, λreev)
     [rank[i] - rank[λ + i] - sign(rank[i] - rank[λ + i]) for i in 1:λreev], rank
 end
 Δlim(R, θ, λ) = θ * median([abs(i - R) for i in 1:2λ-1])
-function noise_handling!(p::Parameters{<:Any,<:NoiseHandling}, f, y, fvals, perm)
+function noise_handling!(p::Parameters{<:Any,<:Any,<:NoiseHandling}, f, y, fvals, perm)
     n = p.noise_handling
     rate = p.λ * n.r
     λreev = floor(Int, rate) + (rand(p.rng) < rate - floor(rate))
