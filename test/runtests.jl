@@ -1,7 +1,7 @@
 using CMAEvolutionStrategy
-using Test, Statistics, LibGit2, PyCall
-# using BlackBoxOptimizationBenchmarking
-# const BBOB = BlackBoxOptimizationBenchmarking
+using Test, Statistics, LibGit2
+using BlackBoxOptimizationBenchmarking, PyCall
+const BBOB = BlackBoxOptimizationBenchmarking
 
 const PYCMA_PATH = joinpath(@__DIR__, "pycma")
 if !isdir(PYCMA_PATH)
@@ -10,37 +10,6 @@ if !isdir(PYCMA_PATH)
 end
 pushfirst!(PyVector(pyimport("sys")."path"), PYCMA_PATH)
 cma = pyimport("cma")
-
-# TODO: reactivate these tests when BBOB registers new version
-# https://github.com/jonathanBieler/BlackBoxOptimizationBenchmarking.jl/issues/9
-# @testset "BBOB comparison with PyCMA" begin
-#     pinit(D) = 10*rand(D) .- 5
-# 
-#     struct CMAES end
-#     function BBOB.optimize(::CMAES, f, D, run_length)
-#         CMAEvolutionStrategy.minimize(f, pinit(D), 1., verbosity = 0, maxfevals = run_length)
-#     end
-#     BBOB.minimum(o::CMAEvolutionStrategy.Optimizer) = fbest(o)
-#     BBOB.minimizer(o::CMAEvolutionStrategy.Optimizer) = xbest(o)
-#     struct PyCMA end
-#     function BBOB.optimize(m::PyCMA, f, D, run_length)
-#         es = cma.CMAEvolutionStrategy(pinit(D), 1, cma.CMAOptions(verb_log = 0,
-#                                                                   verb_disp = 0,
-#                                                                   maxfevals = run_length))
-#         mfit = es.optimize(f).result
-#         (m, mfit[1], mfit[2])
-#     end
-#     BBOB.minimum(mfit::Tuple{PyCMA,Vector{Float64},Float64}) = mfit[3]
-#     BBOB.minimizer(mfit::Tuple{PyCMA,Vector{Float64},Float64}) = mfit[2]
-# 
-#     D = [3, 12]
-#     lengths = [1_000, 20_000]
-#     res1 = BBOB.benchmark(CMAES(), BBOB.BBOBFunctions, lengths, 10, D, 1e-6)
-#     res2 = BBOB.benchmark(PyCMA(), BBOB.BBOBFunctions, lengths, 10, D, 1e-6)
-# 
-#     @test sum(res1.success_counts) > .99 * sum(res2.success_counts)
-#     @test sum(res1.minimum) < 1.1 * sum(res2.minimum)
-# end
 
 @testset "BoxConstaints" begin
     respycma = cma.fmin(cma.ff.rosen, zeros(3), .25,
@@ -91,9 +60,39 @@ end
         end
     end
     res = minimize(f_log, ones(4), .25, verbosity = 0,
-                   noise_handling = CMAEvolutionStrategy.NoiseHandling(4),
                    maxiter = 50, lower = ones(4), upper = 2 * ones(4))
     idx = argmin(f_log.fhist)
     @test fbest(res) == f_log.fhist[idx]
     @test xbest(res) == f_log.xhist[idx]
 end
+
+@testset "BBOB comparison with PyCMA" begin
+    pinit(D) = 10*rand(D) .- 5
+
+    struct CMAES end
+    function BBOB.optimize(::CMAES, f, D, run_length)
+        CMAEvolutionStrategy.minimize(f, pinit(D), 1., verbosity = 0, maxfevals = run_length)
+    end
+    BBOB.minimum(o::CMAEvolutionStrategy.Optimizer) = fbest(o)
+    BBOB.minimizer(o::CMAEvolutionStrategy.Optimizer) = xbest(o)
+    struct PyCMA end
+    function BBOB.optimize(m::PyCMA, f, D, run_length)
+        es = cma.CMAEvolutionStrategy(pinit(D), 1, cma.CMAOptions(verb_log = 0,
+                                                                  verb_disp = 0,
+                                                                  maxfevals = run_length))
+        mfit = es.optimize(f).result
+        (m, mfit[1], mfit[2])
+    end
+    BBOB.minimum(mfit::Tuple{PyCMA,Vector{Float64},Float64}) = mfit[3]
+    BBOB.minimizer(mfit::Tuple{PyCMA,Vector{Float64},Float64}) = mfit[2]
+
+    D = [3, 12]
+    lengths = round.(Int,range(1_000, stop=20_000, length=2))
+    res1 = BBOB.benchmark(CMAES(), BBOB.list_functions(), lengths, 10, D, 1e-6)
+    res2 = BBOB.benchmark(PyCMA(), BBOB.list_functions(), lengths, 10, D, 1e-6)
+
+    @test all(res1.success_counts .> .9 * res2.success_counts)
+    @show res1.minimum res2.minimum
+    @test all(res1.minimum .< 2 * res2.minimum)
+end
+

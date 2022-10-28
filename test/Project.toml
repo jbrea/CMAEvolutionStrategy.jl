@@ -1,4 +1,5 @@
 [deps]
+BlackBoxOptimizationBenchmarking = "4552ee2b-11da-5aef-8e78-0d48532001f1"
 LibGit2 = "76f85450-5226-5b5a-8eaa-529ad045b433"
 Optim = "429524aa-4258-5aef-a3af-852621145aeb"
 PyCall = "438e738f-606a-5dbb-bf0a-cddfbfd45ab0"
