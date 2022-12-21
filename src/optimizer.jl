@@ -98,7 +98,7 @@ end
 function MEigen(m)
     e = eigen(Symmetric(m))
     if e.values[1] < 1e-16
-        MEigen(m + 1e-15I)
+        MEigen(m + 1e-12I)
     else
         MEigen(m, e, sqrt.(e.values))
     end
