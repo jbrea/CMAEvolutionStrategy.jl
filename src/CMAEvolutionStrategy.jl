@@ -84,6 +84,32 @@ of `n` rows (`n = length(x0)`) and `popsize` columns and should return a vector 
 length `popsize`. To use multi-threaded parallel evaluation of the objective function,
 set `multi_threading = true` and start julia with multiple threads
 (c.f. julia manual for the multi-threading setup).
+
+### Example 1
+```
+using CMAEvolutionStrategy
+
+function rosenbrock(x)
+   n = length(x)
+   sum(100 * (x[2i-1]^2 - x[2i])^2 + (x[2i-1] - 1)^2 for i in 1:div(n, 2))
+end
+
+result = minimize(rosenbrock, zeros(6), 1.)
+
+xbest(result) # show best input x
+
+fbest(result) # show best function value
+
+population_mean(result) # show mean of final population
+```
+### Example 2
+```
+# continuation of Example 1 with parallel evaluation
+
+rosenbrock_parallel(x) = [rosenbrock(xi) for xi in eachcol(x)]
+
+result = minimize(rosenbrock_parallel, zeros(6), 1., parallel_evaluation = true)
+```
 """
 function minimize(f, x0, s0;
                   kwargs...)
