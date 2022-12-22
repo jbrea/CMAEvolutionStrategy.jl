@@ -95,10 +95,10 @@ struct MEigen
     e::Eigen{Float64,Float64,Array{Float64,2},Array{Float64,1}}
     sqrtvalues::Vector{Float64}
 end
-function MEigen(m)
+function MEigen(m, δ = 1e-15)
     e = eigen(Symmetric(m))
     if e.values[1] < 1e-16
-        MEigen(m + 1e-12I)
+        MEigen(m + δ * I, 10δ) # shrinkage
     else
         MEigen(m, e, sqrt.(e.values))
     end
